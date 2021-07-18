@@ -109,6 +109,8 @@ should look like as follows:
 robot           icub
 // the thread period [ms]
 thread_period   30
+// eyes movements (pan) switch
+eyes            on
 // left arm switch
 left_arm        on
 // right arm switch
@@ -335,6 +337,7 @@ protected:
     std::vector<string> speech_idle;
 
     bool useSpeech;
+    bool useEyes;
     bool useLeftArm;
     bool useRightArm;
     bool useTorso;
@@ -1529,6 +1532,7 @@ public:
         Bottle &bGeneral=rf.findGroup("general");
         bGeneral.setMonitor(rf.getMonitor());
         robot=bGeneral.check("robot",Value("icub"),"Getting robot name").asString();
+        useEyes=bGeneral.check("eyes",Value("on"),"Getting eyes use flag").asString()=="on"?true:false;
         useLeftArm=bGeneral.check("left_arm",Value("on"),"Getting left arm use flag").asString()=="on"?true:false;
         useRightArm=bGeneral.check("right_arm",Value("on"),"Getting right arm use flag").asString()=="on"?true:false;
         useTorso=bGeneral.check("torso",Value("on"),"Getting torso use flag").asString()=="on"?true:false;
@@ -1796,8 +1800,15 @@ public:
         gazeCtrl->storeContext(&startup_context_id_gaze);
         gazeCtrl->restoreContext(0);
         gazeCtrl->blockNeckRoll(0.0);
-        gazeCtrl->setSaccadesActivationAngle(20.0);
-        gazeCtrl->setSaccadesInhibitionPeriod(1.0);
+        if (useEyes)
+        {
+            gazeCtrl->setSaccadesActivationAngle(20.0);
+            gazeCtrl->setSaccadesInhibitionPeriod(1.0);
+        }
+        else
+        {
+            gazeCtrl->blockEyes(0.0);
+        }
 
         if (useLeftArm)
         {
