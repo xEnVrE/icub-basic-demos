@@ -131,6 +131,8 @@ network         network.ini
 speech          on
 // enable the simulation
 simulation      off
+// name of the frame in which the target is expressed (root or eye)
+target_frame    eye
 
 [torso]
 // joint switch (min **) (max **) [deg]; 'min', 'max' optional
@@ -331,6 +333,7 @@ protected:
     string name;
     string robot;
     string eyeUsed;
+    string targetFrame;
 
     std::vector<string> speech_grasp;
     std::vector<string> speech_reach;
@@ -795,18 +798,31 @@ protected:
 
                     if ((isnan(fp[0])==0) && (isnan(fp[1])==0) && (isnan(fp[2])==0))
                     {
-                        Vector x,o;
-                        if (eyeUsed=="left")
-                            gazeCtrl->getLeftEyePose(x,o);
-                        else
-                            gazeCtrl->getRightEyePose(x,o);
-
-                        Matrix T=axis2dcm(o);
-                        T.setSubcol(x,0,3);
-
-                        targetPos=T*fp;
-                        targetPos.pop_back();
                         newTarget=true;
+
+                        if (targetFrame=="eye")
+                        {
+                            Vector x,o;
+                            if (eyeUsed=="left")
+                                gazeCtrl->getLeftEyePose(x,o);
+                            else
+                                gazeCtrl->getRightEyePose(x,o);
+
+                            Matrix T=axis2dcm(o);
+                            T.setSubcol(x,0,3);
+
+                            targetPos=T*fp;
+                            targetPos.pop_back();
+                        }
+                        else if (targetFrame=="root")
+                        {
+                            targetPos=Vector(3);
+                            targetPos[0]=fp[0];
+                            targetPos[1]=fp[1];
+                            targetPos[2]=fp[2];
+                        }
+                        else
+                            newTarget=false;
                     }
                 }
             }
@@ -1544,6 +1560,12 @@ public:
         eyeUsed=bGeneral.check("eye",Value("left"),"Getting the used eye").asString();
         idleTmo=bGeneral.check("idle_tmo",Value(1e10),"Getting idle timeout").asDouble();
         setPeriod((double)bGeneral.check("thread_period",Value(DEFAULT_THR_PER),"Getting thread period [ms]").asInt()/1000.0);
+        targetFrame=bGeneral.check("target_frame",Value("eye"),"Getting name of target frame").asString();
+        if ((targetFrame!="eye") && (targetFrame!="root"))
+        {
+            yWarning("*** The specified 'target_frame' %s is not valid. Using 'target_frame = eye' as default ...",targetFrame.c_str());
+            targetFrame="eye";
+        }
 
         if (!useTorso)
         {
